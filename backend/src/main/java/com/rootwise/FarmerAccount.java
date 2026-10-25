@@ -78,4 +78,9 @@ public class FarmerAccount {
     public void setPasswordResetToken(String passwordResetToken) { this.passwordResetToken = passwordResetToken; }
     public void setPasswordResetExpiresAt(Instant passwordResetExpiresAt) { this.passwordResetExpiresAt = passwordResetExpiresAt; }
     public void setPasswordHash(String passwordHash) { this.passwordHash = passwordHash; }
+    public void updateProfile(String name, String farmLocation, String preferredLanguage) {
+        this.name = name;
+        this.farmLocation = farmLocation;
+        this.preferredLanguage = preferredLanguage;
+    }
 }

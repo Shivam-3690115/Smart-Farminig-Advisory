@@ -8,32 +8,12 @@ import {
 } from 'lucide-react'
 import './styles.css'
 
-const apiBase = `${window.location.protocol}//${window.location.hostname}:8080/api`
-const weather = [
-  { day: 'Today', icon: Sun, temp: '29°', rain: '10%', tone: 'sunny' },
-  { day: 'Fri', icon: CloudRain, temp: '27°', rain: '65%', tone: 'rainy' },
-  { day: 'Sat', icon: CloudRain, temp: '26°', rain: '80%', tone: 'rainy' },
-  { day: 'Sun', icon: Sun, temp: '30°', rain: '12%', tone: 'sunny' },
-  { day: 'Mon', icon: Sun, temp: '31°', rain: '8%', tone: 'sunny' },
-]
-
-const initialTasks = [
-  { id: 1, title: 'Inspect tomato leaves', meta: 'Today · 8:00 AM', type: 'Crop health', done: false },
-  { id: 2, title: 'Irrigate north field', meta: 'Today · 5:30 PM', type: 'Irrigation', done: false },
-  { id: 3, title: 'Apply organic compost', meta: 'Tomorrow · 7:00 AM', type: 'Nutrition', done: true },
-]
-
-const advisories = [
-  { title: 'Rain expected in 2 days', text: 'Hold irrigation for your tomato field and save approximately 1,200 L of water.', tag: 'Water smart', color: 'blue', icon: CloudRain },
-  { title: 'Early blight risk is rising', text: 'Humidity is high. Check lower leaves in the next 24 hours and improve airflow.', tag: 'Crop health', color: 'orange', icon: AlertTriangle },
-  { title: 'Best time to fertilize', text: 'A light potassium feed will support flowering in your 42-day tomato crop.', tag: 'Nutrition', color: 'green', icon: Leaf },
-]
-
-const initialNotifications = [
-  { id: 1, title: 'Rain expected in 2 days', text: 'Hold irrigation for your tomato field.', time: '12 min ago', unread: true, icon: CloudRain },
-  { id: 2, title: 'Early blight risk is rising', text: 'Inspect lower leaves within 24 hours.', time: '1 hour ago', unread: true, icon: AlertTriangle },
-  { id: 3, title: 'Irrigation task completed', text: 'North field watering was logged.', time: 'Yesterday', unread: false, icon: CheckCircle2 },
-]
+const configuredApiBase = import.meta.env.VITE_API_URL?.replace(/\/$/, '')
+const apiBase = configuredApiBase || `${window.location.protocol}//${window.location.hostname}:8080/api`
+const weather = []
+const initialTasks = []
+const advisories = []
+const initialNotifications = []
 
 const languageText = {
   English: {
@@ -89,21 +69,17 @@ const languageText = {
 function App() {
   const [loggedIn, setLoggedIn] = useState(false)
   const [active, setActive] = useState('Overview')
-  const [tasks, setTasks] = useState(initialTasks)
+  const [tasks, setTasks] = useState([])
   const [toast, setToast] = useState('')
   const [mobileOpen, setMobileOpen] = useState(false)
   const [showModal, setShowModal] = useState(false)
   const [newTask, setNewTask] = useState('')
   const [profile, setProfile] = useState(null)
-  const [notifications, setNotifications] = useState(initialNotifications)
+  const [notifications, setNotifications] = useState([])
   const [showNotifications, setShowNotifications] = useState(false)
   const [uiLanguage, setUiLanguage] = useState('English')
   const text = languageText[uiLanguage] || languageText.English
-  const [crops, setCrops] = useState([
-    { name: 'Tomato', variety: 'Arka Rakshak', stage: 'Flowering', days: '42 days', color: 'red' },
-    { name: 'Onion', variety: 'N-53', stage: 'Bulbing', days: '68 days', color: 'purple' },
-    { name: 'Chilli', variety: 'Byadgi', stage: 'Vegetative', days: '31 days', color: 'green' },
-  ])
+  const [crops, setCrops] = useState([])
   const [showCropModal, setShowCropModal] = useState(false)
   const [cropForm, setCropForm] = useState({ name: '', variety: '', stage: 'Seedling' })
 
@@ -120,7 +96,7 @@ function App() {
       }
     }
     if (savedLanguage) setUiLanguage(savedLanguage)
-    fetch(`${apiBase}/dashboard`)
+    fetch(`${apiBase}/dashboard?email=${encodeURIComponent(savedProfile ? JSON.parse(savedProfile).email : '')}`)
       .then((response) => response.ok ? response.json() : null)
       .then((data) => {
         if (data?.farmer) {
@@ -180,12 +156,12 @@ function App() {
         <nav>
           <p className="nav-label">{text.workspace}</p>
           {[
-            [text.overview, Home], [text.myCrops, Leaf], [text.advisories, MessageCircle],
-            [text.irrigation, Droplets], [text.farmTasks, Tractor], [text.insights, BarChart3],
-            ['Crop lab', Calculator], ['Fertilizer', Sprout], ['Disease guide', Bug],
-            ['Weather desk', Sun], ['Mandi rates', Store], ['Farm economics', IndianRupee], ['Kisan Mitra', MessageCircle],
-            ['CEP report', FileText],
-          ].map(([name, Icon]) => <button key={name} className={active === name ? 'nav-item active' : 'nav-item'} onClick={() => { setActive(name); setMobileOpen(false); setShowNotifications(false) }}><Icon size={18} /><span>{name}</span>{name === text.advisories && <i className="nav-dot" />}</button>)}
+            ['Overview', text.overview, Home], ['My crops', text.myCrops, Leaf], ['Advisories', text.advisories, MessageCircle],
+            ['Irrigation', text.irrigation, Droplets], ['Farm tasks', text.farmTasks, Tractor], ['Insights', text.insights, BarChart3],
+            ['Crop lab', 'Crop lab', Calculator], ['Fertilizer', 'Fertilizer', Sprout],
+            ['Weather desk', 'Weather desk', Sun], ['Mandi rates', 'Mandi rates', Store],
+            ['Farm economics', 'Farm economics', IndianRupee], ['Kisan Mitra', 'Kisan Mitra', MessageCircle],
+          ].map(([key, label, Icon]) => <button key={key} className={active === key ? 'nav-item active' : 'nav-item'} onClick={() => { setActive(key); setMobileOpen(false); setShowNotifications(false) }}><Icon size={18} /><span>{label}</span>{key === 'Advisories' && <i className="nav-dot" />}</button>)}
         </nav>
         <div className="sidebar-bottom">
           <button className={active === 'Settings' ? 'nav-item active' : 'nav-item'} onClick={() => setActive('Settings')}><Settings size={18} /><span>{text.settings}</span></button>
@@ -203,7 +179,7 @@ function App() {
         {showNotifications && <NotificationPanel notifications={notifications} onRead={(id) => setNotifications(notifications.map(item => item.id === id ? { ...item, unread: false } : item))} onReadAll={() => setNotifications(notifications.map(item => ({ ...item, unread: false })))} />}
 
         <div className="page">
-          {active !== 'Overview' && <SectionPage active={active} tasks={tasks} toggleTask={toggleTask} advisories={advisories} crops={crops} setCrops={setCrops} onAddTask={() => setShowModal(true)} onAddCrop={() => setShowCropModal(true)} notify={notify} />}
+          {active !== 'Overview' && <SectionPage active={active} tasks={tasks} toggleTask={toggleTask} advisories={advisories} notifications={notifications} crops={crops} setCrops={setCrops} profile={profile} setProfile={setProfile} onAddTask={() => setShowModal(true)} onAddCrop={() => setShowCropModal(true)} notify={notify} />}
           {active === 'Overview' && <>
           <section className="welcome-row">
             <div><p className="eyebrow">THURSDAY, 22 AUGUST 2024 <span className="live-dot" /> LIVE ADVISORIES</p><h1>{text.greeting}, {profile?.name || 'Farmer'} <span>🌾</span></h1><p className="subheading">Here’s what your farm is telling you today.</p></div>
@@ -211,18 +187,18 @@ function App() {
           </section>
 
           <section className="stats-grid">
-            <StatCard icon={Sprout} label="Active crops" value="04" detail="+1 this season" positive />
-            <StatCard icon={Droplets} label="Soil moisture" value="68%" detail="Optimal range" />
-            <StatCard icon={TrendingUp} label="Water saved" value="2,840 L" detail="+18% this month" positive />
-            <StatCard icon={AlertTriangle} label="Open advisories" value="03" detail="2 need attention" warning />
+            <StatCard icon={Sprout} label="Active crops" value="0" detail="From your saved farm data" />
+            <StatCard icon={Droplets} label="Soil moisture" value="—" detail="Add a soil reading" />
+            <StatCard icon={TrendingUp} label="Water saved" value="—" detail="No irrigation records" />
+            <StatCard icon={AlertTriangle} label="Open advisories" value="0" detail="No advisories returned" />
           </section>
 
           <section className="content-grid">
             <div className="left-column">
               <div className="section-heading"><div><p className="eyebrow">FIELD PULSE</p><h2>Farm at a glance</h2></div><button className="text-btn" onClick={() => setActive('Insights')}>View insights <ArrowUpRight size={15} /></button></div>
               <div className="field-card">
-                <div className="field-card-top"><div><span className="field-status"><i /> All systems healthy</span><h3>Green Valley Farm</h3><p>12.4 acres · Nashik, Maharashtra</p></div><button className="more-btn">•••</button></div>
-                <div className="field-visual"><div className="field-map"><div className="map-lines" /><span className="map-pin">●</span><span className="map-label">North field</span><span className="map-label second">South field</span></div><div className="field-metrics"><div><span>Soil moisture</span><strong>68<span>%</span></strong><em className="meter green"><i style={{ width: '68%' }} /></em><small>+4% from yesterday</small></div><div><span>Temperature</span><strong>29<span>°C</span></strong><em className="meter yellow"><i style={{ width: '57%' }} /></em><small>Feels like 31°C</small></div><div><span>Rainfall</span><strong>4.2<span>mm</span></strong><em className="meter blue"><i style={{ width: '28%' }} /></em><small>Last 7 days</small></div></div></div>
+                <div className="field-card-top"><div><span className="field-status"><i /> Awaiting farm data</span><h3>{profile?.farmName || 'Farm location not set'}</h3><p>{profile?.acres || 0} acres · {profile?.location || 'Location not set'}</p></div><button className="more-btn">•••</button></div>
+                <div className="field-visual"><EmptyData message="Soil, water, and field metrics will appear after they are saved in the database." /></div>
               </div>
 
               <div className="section-heading advisory-heading"><div><p className="eyebrow">PERSONALIZED FOR YOUR CROPS</p><h2>Today's advisories</h2></div><button className="text-btn" onClick={() => setActive('Advisories')}>See all <ArrowUpRight size={15} /></button></div>
@@ -312,7 +288,7 @@ function NotificationPanel({ notifications, onRead, onReadAll }) {
   return <div className="notification-panel"><div className="notification-head"><div><p className="eyebrow">INBOX</p><h3>Notifications</h3></div><button onClick={onReadAll}>Mark all read</button></div>{notifications.map(({ id, title, text, time, unread, icon: Icon }) => <button className={unread ? 'notification-row unread' : 'notification-row'} key={id} onClick={() => onRead(id)}><span className="notification-icon"><Icon size={16} /></span><span><strong>{title}</strong><small>{text}</small><em>{time}</em></span>{unread && <i />}</button>)}</div>
 }
 
-function SectionPage({ active, tasks, toggleTask, advisories, crops, onAddTask, onAddCrop, notify }) {
+function SectionPage({ active, tasks, toggleTask, advisories, notifications, crops, profile, setProfile, onAddTask, onAddCrop, notify }) {
   const headings = {
     'My crops': ['CROP PORTFOLIO', 'Your crops', 'Track every field from sowing to harvest.'],
     'Advisories': ['FIELD INTELLIGENCE', 'Personalized advisories', 'Recommendations based on your crops, weather, and soil.'],
@@ -323,22 +299,24 @@ function SectionPage({ active, tasks, toggleTask, advisories, crops, onAddTask, 
     Settings: ['ACCOUNT', 'Farm settings', 'Keep your farm profile and preferences up to date.'],
     'Crop lab': ['SMART AGRONOMY', 'Crop recommendation lab', 'Match soil nutrients, soil type, and season to suitable crops.'],
     Fertilizer: ['PRECISION NUTRITION', 'Fertilizer calculator', 'Estimate nutrient deficits, commercial bags, and application timing.'],
-    'Disease guide': ['CROP HEALTH', 'Disease diagnostic guide', 'Search symptoms and review safer management protocols.'],
     'Weather desk': ['AGRO-METEOROLOGY', 'Weather advisory desk', 'Plan irrigation and spraying around the five-day outlook.'],
     'Mandi rates': ['MARKET INTELLIGENCE', 'APMC mandi tracker', 'Compare indicative modal prices and arrival movement.'],
     'Farm economics': ['FARM ECONOMICS', 'Cost-benefit planner', 'Understand production cost, profit, B:C ratio, and breakeven price.'],
     'Kisan Mitra': ['FARMER SUPPORT', 'Kisan Mitra', 'Get quick answers and emergency support numbers.'],
-    'CEP report': ['ACADEMIC DOCUMENTATION', 'CEP project report', 'Review the project methodology and print a viva-ready summary.'],
   }
-  if (['Crop lab', 'Fertilizer', 'Disease guide', 'Weather desk', 'Mandi rates', 'Farm economics', 'Kisan Mitra', 'CEP report'].includes(active)) {
+  if (['Crop lab', 'Fertilizer', 'Weather desk', 'Mandi rates', 'Farm economics', 'Kisan Mitra'].includes(active)) {
     const [eyebrow, title, subtitle] = headings[active]
-    const modules = { 'Crop lab': <CropLab />, Fertilizer: <FertilizerCalculator />, 'Disease guide': <DiseaseGuide />,
+    const modules = { 'Crop lab': <CropLab />, Fertilizer: <FertilizerCalculator />,
       'Weather desk': <WeatherDesk />, 'Mandi rates': <MandiTracker />, 'Farm economics': <EconomicsPlanner />,
-      'Kisan Mitra': <KisanMitra />, 'CEP report': <CepReport /> }
+      'Kisan Mitra': <KisanMitra /> }
     return <section className="section-page"><div className="section-page-head"><div><p className="eyebrow">{eyebrow}</p><h1>{title}</h1><p>{subtitle}</p></div></div>{modules[active]}</section>
   }
   const [eyebrow, title, subtitle] = headings[active]
-  return <section className="section-page"><div className="section-page-head"><div><p className="eyebrow">{eyebrow}</p><h1>{title}</h1><p>{subtitle}</p></div>{active === 'Farm tasks' && <button className="primary-btn" onClick={onAddTask}><Plus size={17} /> Add farm task</button>}{active === 'My crops' && <button className="primary-btn" onClick={onAddCrop}><Plus size={17} /> Add crop</button>}</div>{active === 'My crops' && <div className="section-cards crop-grid">{crops.map(crop => <CropCard key={`${crop.name}-${crop.variety}`} {...crop} />)}</div>}{active === 'Notifications' && <NotificationSection notifications={initialNotifications} />}{active === 'Advisories' && <><PlantDoctor notify={notify} /><div className="section-cards advisory-page-list">{advisories.map(item => <article className={`advisory-card ${item.color}`} key={item.title}><div className="advisory-icon"><item.icon size={19} /></div><div className="advisory-copy"><span className="tag">{item.tag}</span><h3>{item.title}</h3><p>{item.text}</p><button onClick={() => notify('Recommendation marked as reviewed')}>Review recommendation   <ArrowUpRight size={14} /></button></div></article>)}</div></>}{active === 'Irrigation' && <IrrigationPage notify={notify} />}{active === 'Farm tasks' && <div className="tasks-card section-tasks">{tasks.map(task => <div className={task.done ? 'task done' : 'task'} key={task.id}><button className="check-btn" onClick={() => toggleTask(task.id)}>{task.done && <Check size={14} />}</button><div><strong>{task.title}</strong><span>{task.meta}</span></div><span className="task-type">{task.type}</span></div>)}<button className="add-task-btn" onClick={onAddTask}><Plus size={16} /> Add another task</button></div>}{active === 'Insights' && <InsightsPage notify={notify} />}{active === 'Settings' && <SettingsPage notify={notify} />}</section>
+  return <section className="section-page"><div className="section-page-head"><div><p className="eyebrow">{eyebrow}</p><h1>{title}</h1><p>{subtitle}</p></div>{active === 'Farm tasks' && <button className="primary-btn" onClick={onAddTask}><Plus size={17} /> Add farm task</button>}{active === 'My crops' && <button className="primary-btn" onClick={onAddCrop}><Plus size={17} /> Add crop</button>}</div>{active === 'My crops' && <div className="section-cards crop-grid">{crops.length ? crops.map(crop => <CropCard key={`${crop.name}-${crop.variety}`} {...crop} />) : <EmptyData message="No crops have been saved for this account yet." />}</div>}{active === 'Notifications' && <NotificationSection notifications={notifications} />}{active === 'Advisories' && <><PlantDoctor notify={notify} /><EmptyData message="No advisories have been returned for this account." /></>}{active === 'Irrigation' && <IrrigationPage notify={notify} profile={profile} />}{active === 'Farm tasks' && <div className="tasks-card section-tasks">{tasks.length ? tasks.map(task => <div className={task.done ? 'task done' : 'task'} key={task.id}><button className="check-btn" onClick={() => toggleTask(task.id)}>{task.done && <Check size={14} />}</button><div><strong>{task.title}</strong><span>{task.meta}</span></div><span className="task-type">{task.type}</span></div>) : <EmptyData message="No tasks have been saved for this account yet." />}<button className="add-task-btn" onClick={onAddTask}><Plus size={16} /> Add another task</button></div>}{active === 'Insights' && <InsightsPage notify={notify} profile={profile} />}{active === 'Settings' && <SettingsPage notify={notify} profile={profile} setProfile={setProfile} />}</section>
+}
+
+function EmptyData({ message }) {
+  return <div className="empty-card"><Info size={22} /><strong>No data returned</strong><span>{message}</span></div>
 }
 
 const cropProfiles = [
@@ -355,14 +333,28 @@ function ModuleCard({ title, children }) {
 }
 
 function CropLab() {
-  const [form, setForm] = useState({ soil: 'Black', ph: 6.8, n: 45, p: 25, k: 40, season: 'Kharif' })
-  const update = (key, value) => setForm({ ...form, [key]: value })
-  const results = cropProfiles.map(crop => {
-    const nutrient = 100 - (Math.abs(form.n - crop.ideal[0]) + Math.abs(form.p - crop.ideal[1]) + Math.abs(form.k - crop.ideal[2])) / 2
-    const score = Math.max(0, Math.min(99, Math.round(nutrient + (crop.soil.includes(form.soil) ? 18 : 0) + (crop.season === form.season ? 12 : 0) + (form.ph >= crop.ph[0] && form.ph <= crop.ph[1] ? 10 : -8))))
-    return { ...crop, score }
-  }).sort((a, b) => b.score - a.score)
-  return <div className="module-layout"><ModuleCard title="Soil and climate inputs"><div className="form-grid"><label>Soil type<select value={form.soil} onChange={e => update('soil', e.target.value)}><option>Black</option><option>Alluvial</option><option>Red</option><option>Loamy</option></select></label><label>Season<select value={form.season} onChange={e => update('season', e.target.value)}><option>Kharif</option><option>Rabi</option><option>Zaid</option></select></label></div><div className="form-grid"><label>Soil pH<input type="number" step="0.1" value={form.ph} onChange={e => update('ph', e.target.value)} /></label><label>Nitrogen (kg/acre)<input type="number" value={form.n} onChange={e => update('n', e.target.value)} /></label><label>Phosphorus<input type="number" value={form.p} onChange={e => update('p', e.target.value)} /></label><label>Potassium<input type="number" value={form.k} onChange={e => update('k', e.target.value)} /></label></div></ModuleCard><ModuleCard title="NPK balance"><NpkRadar values={[form.n, form.p, form.k]} /><div className="metric-inline"><span>N {form.n}</span><span>P {form.p}</span><span>K {form.k}</span></div></ModuleCard><ModuleCard title="Recommended crops"><div className="recommendation-list">{results.map((crop, index) => <div className="recommendation-row" key={crop.name}><span className="rank">{index + 1}</span><div><strong>{crop.name}</strong><small>{crop.soil.join(' / ')} soil · {crop.season} · pH {crop.ph[0]}–{crop.ph[1]}</small></div><b>{crop.score}%</b></div>)}</div></ModuleCard></div>
+  return <AiAnalysis title="Crop recommendation" queryLabel="Describe the crop recommendation request" placeholder="Example: recommend crops for black soil, pH 6.8, N 45, P 25, K 40, Kharif season" />
+}
+
+function AiAnalysis({ title, queryLabel, placeholder }) {
+  const [query, setQuery] = useState('')
+  const [answer, setAnswer] = useState('')
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+  const run = async () => {
+    if (!query.trim()) return
+    setLoading(true); setError(''); setAnswer('')
+    try {
+      const response = await fetch(`${apiBase}/integrations/farm-analysis`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query, context: localStorage.getItem('rootwise-profile') || '' }),
+      })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error || 'The AI analysis failed.')
+      setAnswer(data.answer)
+    } catch (requestError) { setError(requestError.message) } finally { setLoading(false) }
+  }
+  return <div className="module-layout"><ModuleCard title={title}><label>{queryLabel}<textarea value={query} onChange={event => setQuery(event.target.value)} placeholder={placeholder} /></label><button className="primary-btn" onClick={run} disabled={loading}>{loading ? 'Fetching from AI...' : 'Get AI analysis'}</button>{error && <p className="helper-text error-text">{error}</p>}{answer && <div className="doctor-answer"><p>{answer}</p></div>}</ModuleCard></div>
 }
 
 function NpkRadar({ values }) {
@@ -371,12 +363,7 @@ function NpkRadar({ values }) {
 }
 
 function FertilizerCalculator() {
-  const [crop, setCrop] = useState('Wheat')
-  const [acres, setAcres] = useState(5)
-  const targets = { Wheat: [60, 30, 35], Soybean: [45, 25, 40], Cotton: [55, 25, 45], Onion: [50, 30, 40] }
-  const [n, p, k] = targets[crop]
-  const bags = { urea: Math.ceil(n * acres / 0.46 / 50), dap: Math.ceil(p * acres / 0.46 / 50), mop: Math.ceil(k * acres / 0.6 / 50) }
-  return <div className="module-layout"><ModuleCard title="Target-yield formulation"><div className="form-grid"><label>Crop<select value={crop} onChange={e => setCrop(e.target.value)}>{Object.keys(targets).map(item => <option key={item}>{item}</option>)}</select></label><label>Farm area (acres)<input type="number" min="0.1" value={acres} onChange={e => setAcres(Number(e.target.value) || 0)} /></label></div><p className="helper-text">Indicative nutrient target per acre. Confirm with a soil test and local agriculture officer before application.</p><div className="fertilizer-bags"><div><strong>{n * acres} kg</strong><span>Nitrogen target</span></div><div><strong>{p * acres} kg</strong><span>Phosphorus target</span></div><div><strong>{k * acres} kg</strong><span>Potassium target</span></div></div></ModuleCard><ModuleCard title="50 kg commercial bag estimate"><div className="fertilizer-bags"><div><strong>{bags.urea}</strong><span>Urea bags</span></div><div><strong>{bags.dap}</strong><span>DAP bags</span></div><div><strong>{bags.mop}</strong><span>MOP bags</span></div></div><div className="schedule-list"><p><b>Basal dose</b> 50% DAP + 40% MOP before sowing</p><p><b>Vegetative</b> 50% Urea at active growth</p><p><b>Flowering/pod development</b> balance MOP and split Urea</p></div></ModuleCard></div>
+  return <AiAnalysis title="Fertilizer search and calculation" queryLabel="Search fertilizer or describe the crop and soil data" placeholder="Example: urea recommendation for 3 acres of wheat with soil-test N 35, P 18, K 40" />
 }
 
 const diseases = [
@@ -421,36 +408,24 @@ function WeatherDesk() {
     fetchWeather(location)
   }, [])
 
-  const safeWeather = weatherData || {
-    city: location,
-    temp: 29,
-    humidity: 68,
-    wind: 12,
-    rain: 10,
-    forecast: [{ day: 'Today', temp: 29, rain: 10, wind: 12 }, { day: 'Tomorrow', temp: 27, rain: 65, wind: 18 }, { day: 'Sat', temp: 26, rain: 80, wind: 10 }, { day: 'Sun', temp: 30, rain: 12, wind: 8 }, { day: 'Mon', temp: 31, rain: 8, wind: 7 }],
-  }
-  const warning = safeWeather.wind > 15 || safeWeather.rain > 60
+  const safeWeather = weatherData
+  const warning = safeWeather && (safeWeather.wind > 15 || safeWeather.rain > 60)
 
-  return <div className="module-layout"><ModuleCard title="Farm weather"><div className="weather-search"><Search size={15} /><input value={location} onChange={e => setLocation(e.target.value)} /><button className="secondary-btn" onClick={() => fetchWeather(location)}>{loading ? 'Loading...' : 'Search'}</button></div>{error && <p className="helper-text error-text">{error}</p>}<div className="weather-metrics"><div><strong>{safeWeather.temp}°C</strong><span>Temperature</span></div><div><strong>{safeWeather.humidity}%</strong><span>Humidity</span></div><div><strong>{safeWeather.wind} km/h</strong><span>Wind speed</span></div><div><strong>{safeWeather.rain}%</strong><span>Rain chance</span></div></div><div className={warning ? 'farm-alert warning' : 'farm-alert'}>{warning ? 'Avoid pesticide spraying today because of wind/rain risk.' : 'Good window for field inspection and carefully timed spraying today.'}</div></ModuleCard><ModuleCard title={`Five-day outlook · ${safeWeather.city}`}><div className="forecast-grid">{safeWeather.forecast.map(day => <div className="forecast-item" key={`${safeWeather.city}-${day.day}`}><b>{day.day}</b><Sun size={22} /><strong>{day.temp}°</strong><span>{day.rain}% rain</span><small>{day.rain > 50 ? 'Delay spray' : day.temp > 30 ? 'Irrigate early' : 'Good for field work'}</small></div>)}</div></ModuleCard></div>
+  return <div className="module-layout"><ModuleCard title="Farm weather"><div className="weather-search"><Search size={15} /><input value={location} onChange={e => setLocation(e.target.value)} /><button className="secondary-btn" onClick={() => fetchWeather(location)}>{loading ? 'Loading...' : 'Search'}</button></div>{error && <p className="helper-text error-text">{error}</p>}{safeWeather ? <><div className="weather-metrics"><div><strong>{safeWeather.temp}°C</strong><span>Temperature</span></div><div><strong>{safeWeather.humidity}%</strong><span>Humidity</span></div><div><strong>{safeWeather.wind} km/h</strong><span>Wind speed</span></div><div><strong>{safeWeather.rain}%</strong><span>Rain chance</span></div></div><div className={warning ? 'farm-alert warning' : 'farm-alert'}>{warning ? 'Avoid pesticide spraying today because of wind/rain risk.' : 'Good window for field inspection and carefully timed spraying today.'}</div></> : <EmptyData message="Search a location to load live weather from OpenWeather." />}</ModuleCard>{safeWeather && <ModuleCard title={`Five-day outlook · ${safeWeather.city}`}><div className="forecast-grid">{safeWeather.forecast.map(day => <div className="forecast-item" key={`${safeWeather.city}-${day.day}`}><b>{day.day}</b><Sun size={22} /><strong>{day.temp}°</strong><span>{day.rain}% rain</span><small>{day.rain > 50 ? 'Delay spray' : day.temp > 30 ? 'Irrigate early' : 'Good for field work'}</small></div>)}</div></ModuleCard>}</div>
 }
 
-const marketRows = [{ market: 'Lasalgaon', crop: 'Onion', modal: 2450, min: 2100, max: 2800, change: '+6.2%' }, { market: 'Pune', crop: 'Tomato', modal: 1850, min: 1500, max: 2200, change: '+3.1%' }, { market: 'Nagpur', crop: 'Soybean', modal: 4750, min: 4400, max: 5100, change: '-1.4%' }, { market: 'Akola', crop: 'Cotton', modal: 7200, min: 6800, max: 7600, change: '+2.8%' }]
 function MandiTracker() {
-  return <ModuleCard title="Indicative APMC rates (₹ / quintal)"><p className="helper-text">Demo market feed for the CEP project. Verify today’s modal rate with the local APMC before selling.</p><div className="table-wrap"><table><thead><tr><th>Market</th><th>Produce</th><th>Min</th><th>Modal</th><th>Max</th><th>Trend</th></tr></thead><tbody>{marketRows.map(row => <tr key={row.market}><td>{row.market}</td><td>{row.crop}</td><td>₹{row.min}</td><td><strong>₹{row.modal}</strong></td><td>₹{row.max}</td><td className={row.change.startsWith('+') ? 'positive' : 'negative'}>{row.change}</td></tr>)}</tbody></table></div><div className="price-bars">{marketRows.map(row => <div key={row.crop}><span>{row.crop}</span><i style={{ width: `${Math.min(100, row.modal / 80)}%` }} /></div>)}</div></ModuleCard>
+  return <EmptyData message="Live mandi data is not configured. No indicative or demo prices are shown." />
 }
 
 function EconomicsPlanner() {
-  const [values, setValues] = useState({ area: 5, yield: 20, price: 2400, seeds: 8000, fertilizer: 12000, labor: 18000, machinery: 7000, irrigation: 4000, transport: 5000 })
-  const update = (key, value) => setValues({ ...values, [key]: Number(value) || 0 })
-  const total = ['seeds', 'fertilizer', 'labor', 'machinery', 'irrigation', 'transport'].reduce((sum, key) => sum + values[key], 0)
-  const gross = values.yield * values.area * values.price
-  return <div className="module-layout"><ModuleCard title="Production inputs"><div className="form-grid">{[['area', 'Area (acres)'], ['yield', 'Yield (quintals/acre)'], ['price', 'Sale price / quintal'], ['seeds', 'Seeds'], ['fertilizer', 'Fertilizers'], ['labor', 'Labour'], ['machinery', 'Machinery / tractor'], ['irrigation', 'Irrigation'], ['transport', 'Transport']].map(([key, label]) => <label key={key}>{label}<input type="number" value={values[key]} onChange={e => update(key, e.target.value)} /></label>)}</div></ModuleCard><ModuleCard title="Profitability analytics"><div className="economics-results"><div><span>Total cost</span><strong>₹{total.toLocaleString('en-IN')}</strong></div><div><span>Gross revenue</span><strong>₹{gross.toLocaleString('en-IN')}</strong></div><div><span>Net profit</span><strong className={gross - total >= 0 ? 'positive' : 'negative'}>₹{(gross - total).toLocaleString('en-IN')}</strong></div><div><span>B:C ratio</span><strong>{total ? (gross / total).toFixed(2) : '0.00'}</strong></div><div><span>Breakeven price</span><strong>₹{values.area && values.yield ? Math.ceil(total / (values.area * values.yield)).toLocaleString('en-IN') : 0}</strong></div></div></ModuleCard></div>
+  return <AiAnalysis title="Farm economics calculator" queryLabel="Enter actual farm economics data" placeholder="Example: 3 acres, expected yield 12 quintals/acre, expected sale price, seed cost, fertilizer cost, labour, machinery, irrigation, transport" />
 }
 
 function KisanMitra() {
   const [question, setQuestion] = useState('')
   const [loading, setLoading] = useState(false)
-  const [messages, setMessages] = useState([{ from: 'bot', text: 'Namaste! Ask me about fertilizer dosing, pest symptoms, PMFBY, or soil testing.' }])
+  const [messages, setMessages] = useState([])
   const send = async (event) => {
     event.preventDefault()
     if (!question.trim() || loading) return
@@ -596,22 +571,32 @@ function CropModal({ form, setForm, onClose, onSave }) {
   return <div className="modal-backdrop" onClick={onClose}><div className="modal" onClick={event => event.stopPropagation()}><button className="modal-close" onClick={onClose}><X size={18} /></button><p className="eyebrow">CROP PORTFOLIO</p><h2>Add a crop</h2><p className="modal-copy">Add the crop you want Rootwise to monitor and advise.</p><form onSubmit={event => { event.preventDefault(); if (form.name.trim()) onSave() }}><label>Crop name<input required value={form.name} onChange={event => setForm({ ...form, name: event.target.value })} placeholder="e.g. Wheat" autoFocus /></label><label>Variety<input required value={form.variety} onChange={event => setForm({ ...form, variety: event.target.value })} placeholder="e.g. HD-2967" /></label><label>Growth stage<select value={form.stage} onChange={event => setForm({ ...form, stage: event.target.value })}><option>Seedling</option><option>Vegetative</option><option>Flowering</option><option>Harvesting</option></select></label><div className="modal-actions"><button type="button" className="secondary-btn" onClick={onClose}>Cancel</button><button type="submit" className="primary-btn">Save crop</button></div></form></div></div>
 }
 
-function IrrigationPage({ notify }) {
-  return <div className="irrigation-layout"><div className="irrigation-hero"><div><span className="field-status"><i /> SYSTEM READY</span><h2>Next watering window</h2><strong>Today, 5:30 PM</strong><p>North field · Tomato · Estimated 1,200 litres</p><button className="primary-btn" onClick={() => notify('Irrigation marked as completed')}><Check size={16} /> Log irrigation</button></div><Droplets size={76} /></div><div className="section-cards metric-grid"><div className="metric-panel"><span>Current moisture</span><strong>68%</strong><small>Optimal range: 55–75%</small></div><div className="metric-panel"><span>Water used this month</span><strong>8,460 L</strong><small className="positive">18% less than last month</small></div><div className="metric-panel"><span>Next rain forecast</span><strong>2 days</strong><small>Skip the next cycle if rain arrives</small></div></div></div>
+function IrrigationPage() {
+  return <AiAnalysis title="AI irrigation plan" queryLabel="Enter current soil moisture, crop, area, and recent rain data" placeholder="Example: tomato, 2 acres, soil moisture 42%, no rain in 5 days" />
 }
 
-function InsightsPage({ notify }) {
-  return <div className="section-cards insight-grid"><div className="insight-panel"><span>WATER SAVED</span><strong>2,840 L</strong><div className="chart-bars"><i /><i /><i /><i /><i /><i /><i /></div><small>Last 7 days · <b>+18%</b></small></div><div className="insight-panel"><span>FIELD HEALTH</span><strong>86 / 100</strong><div className="health-ring">86%</div><small>Above your seasonal average</small></div><div className="insight-panel"><span>TASK COMPLETION</span><strong>78%</strong><div className="wide-meter"><i style={{ width: '78%' }} /></div><small>14 of 18 tasks completed</small></div><button className="empty-card" onClick={() => notify('Report export started')}><ArrowUpRight size={22} /><strong>Export report</strong><span>Download farm summary</span></button></div>
+function InsightsPage() {
+  return <AiAnalysis title="AI farm insights" queryLabel="Enter the farmer's measured data for analysis" placeholder="Example: 4 acres, crop stage, soil test values, yield, costs, irrigation logs, and recent weather" />
 }
 
-function SettingsPage({ notify }) {
+function SettingsPage({ notify, profile, setProfile }) {
   const [form, setForm] = useState({
-    name: 'Ravi Kumar',
-    farmLocation: 'Nashik, Maharashtra',
-    preferredLanguage: 'English',
+    name: profile?.name || '',
+    farmLocation: profile?.location || '',
+    preferredLanguage: profile?.preferredLanguage || 'English',
   })
+  useEffect(() => setForm({ name: profile?.name || '', farmLocation: profile?.location || '', preferredLanguage: profile?.preferredLanguage || 'English' }), [profile])
 
-  return <div className="settings-card"><label>Farmer name<input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} /></label><label>Farm location<input value={form.farmLocation} onChange={(event) => setForm({ ...form, farmLocation: event.target.value })} /></label><label>Preferred language<select value={form.preferredLanguage} onChange={(event) => setForm({ ...form, preferredLanguage: event.target.value })}><option>English</option><option>Hindi</option><option>Marathi</option></select></label><button className="primary-btn" onClick={() => { notify('Farm settings saved'); localStorage.setItem('rootwise-language', form.preferredLanguage) }}><Check size={16} /> Save changes</button></div>
+  const save = async () => {
+    const response = await fetch(`${apiBase}/auth/profile`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...form, email: profile?.email }) })
+    const data = await response.json()
+    if (!response.ok) return notify(data.error || 'Settings could not be saved')
+    setProfile(data.farmer)
+    localStorage.setItem('rootwise-profile', JSON.stringify(data.farmer))
+    localStorage.setItem('rootwise-language', form.preferredLanguage)
+    notify('Farm settings saved')
+  }
+  return <div className="settings-card"><label>Farmer name<input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} /></label><label>Farm location<input value={form.farmLocation} onChange={(event) => setForm({ ...form, farmLocation: event.target.value })} /></label><label>Preferred language<select value={form.preferredLanguage} onChange={(event) => setForm({ ...form, preferredLanguage: event.target.value })}><option>English</option><option>Hindi</option><option>Marathi</option></select></label><button className="primary-btn" onClick={save}><Check size={16} /> Save changes</button></div>
 }
 
 function StatCard({ icon: Icon, label, value, detail, positive, warning }) {

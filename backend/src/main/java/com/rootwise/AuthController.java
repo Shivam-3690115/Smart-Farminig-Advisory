@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.PutMapping;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -84,6 +85,17 @@ public class AuthController {
             .orElseGet(() -> ResponseEntity.badRequest().body(Map.of("error", "This reset token is invalid or expired.")));
     }
 
+    @PutMapping("/profile")
+    public ResponseEntity<?> updateProfile(@Valid @RequestBody ProfileUpdateRequest request) {
+        return accounts.findByEmailIgnoreCase(request.email().trim())
+            .map(account -> {
+                account.updateProfile(request.name().trim(), request.farmLocation().trim(), request.preferredLanguage());
+                accounts.save(account);
+                return ResponseEntity.ok(accountResponse(account));
+            })
+            .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Farmer account was not found.")));
+    }
+
     private Map<String, Object> accountResponse(FarmerAccount account) {
         return Map.of(
             "token", UUID.randomUUID().toString(),
@@ -119,5 +131,12 @@ public class AuthController {
     public record ResetPasswordRequest(
         @NotBlank String token,
         @NotBlank @Size(min = 8, max = 72) String password
+    ) {}
+
+    public record ProfileUpdateRequest(
+        @NotBlank @Size(min = 2, max = 100) String name,
+        @NotBlank String farmLocation,
+        @NotBlank String preferredLanguage,
+        @NotBlank @Email @Size(max = 190) String email
     ) {}
 }

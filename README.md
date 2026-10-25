@@ -85,3 +85,21 @@ The plant-advice request accepts `symptoms` and an optional `imageDataUrl`. The
 weather endpoint returns current conditions plus a short forecast. If a provider
 is not configured or unavailable, the API returns an explicit error rather than
 silently presenting live data as real.
+
+## Deploy to Render
+
+This repository includes [`render.yaml`](./render.yaml), which defines one Docker
+backend and one static frontend. Create a Render Blueprint from this repository
+and set these required values in the Render dashboard:
+
+- `MYSQL_URL`: a reachable external MySQL JDBC URL; Render does not provide MySQL
+  as a native database service.
+- `MYSQL_USERNAME` and `MYSQL_PASSWORD`
+- `OPENWEATHER_API_KEY`
+- `OPENAI_API_KEY`
+- `VITE_API_URL`: the deployed backend URL followed by `/api`, for example
+  `https://smart-farming-api.onrender.com/api`
+
+Do not put secrets in `backend/.env`, `render.yaml`, or frontend source code.
+After the backend deploys, update `VITE_API_URL` with its actual Render URL and
+redeploy the static frontend.

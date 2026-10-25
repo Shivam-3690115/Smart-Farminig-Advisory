@@ -121,6 +121,7 @@ public class ExternalIntegrationController {
         if (request.question() == null || request.question().isBlank()) {
             return ResponseEntity.badRequest().body(Map.of("error", "Question is required."));
         }
+
         try {
             Map<String, Object> payload = Map.of(
                 "model", openAiModel,
@@ -132,6 +133,36 @@ public class ExternalIntegrationController {
             );
             JsonNode response = requestJson(openAiBaseUrl + "/chat/completions", objectMapper.writeValueAsString(payload), openAiKey);
             String answer = response.path("choices").path(0).path("message").path("content").asText("");
+            return ResponseEntity.ok(Map.of("answer", answer));
+        } catch (ExternalApiException exception) {
+            return ResponseEntity.status(exception.status).body(Map.of("error", exception.getMessage()));
+        } catch (IOException exception) {
+            return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(Map.of("error", "Unable to prepare the AI request."));
+        }
+    }
+
+    @PostMapping("/farm-analysis")
+    public ResponseEntity<?> farmAnalysis(@RequestBody FarmAnalysisRequest request) {
+        if (openAiKey.isBlank()) return configurationError("OPENAI_API_KEY is not configured.");
+        if (request.query() == null || request.query().isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Analysis input is required."));
+        }
+        try {
+            String context = request.context() == null ? "" : request.context();
+            String prompt = "You are a cautious agricultural analyst. Use only the farmer data supplied below. "
+                + "Do not invent measurements, prices, products, contacts, or dates. Return practical advice with "
+                + "clear headings, assumptions, and a warning to verify regulated inputs locally. Task: "
+                + request.query() + "\nFarmer data: " + context;
+            Map<String, Object> payload = Map.of(
+                "model", openAiModel, "temperature", 0.2,
+                "messages", List.of(
+                    Map.of("role", "system", "content", "You are Kisan Mitra. Never present demo or fabricated data as fact."),
+                    Map.of("role", "user", "content", prompt)
+                )
+            );
+            JsonNode response = requestJson(openAiBaseUrl + "/chat/completions", objectMapper.writeValueAsString(payload), openAiKey);
+            String answer = response.path("choices").path(0).path("message").path("content").asText("");
+            if (answer.isBlank()) throw new ExternalApiException(HttpStatus.BAD_GATEWAY.value(), "AI returned no analysis.");
             return ResponseEntity.ok(Map.of("answer", answer));
         } catch (ExternalApiException exception) {
             return ResponseEntity.status(exception.status).body(Map.of("error", exception.getMessage()));
@@ -170,6 +201,7 @@ public class ExternalIntegrationController {
 
     public record PlantAdviceRequest(String symptoms, String imageDataUrl) {}
     public record ChatRequest(String question) {}
+    public record FarmAnalysisRequest(String query, String context) {}
     private static final class ExternalApiException extends RuntimeException {
         private final int status;
         private ExternalApiException(int status, String message) { super(message); this.status = status; }
