@@ -105,7 +105,7 @@ public class ExternalIntegrationController {
             Map<String, Object> payload = Map.of("model", openAiModel, "input",
                 List.of(Map.of("role", "user", "content", content)), "store", false);
             JsonNode response = requestJson(openAiBaseUrl + "/responses", objectMapper.writeValueAsString(payload), openAiKey);
-            String answer = response.path("output_text").asText("");
+            String answer = responseText(response);
             if (answer.isBlank()) throw new ExternalApiException(HttpStatus.BAD_GATEWAY.value(), "AI returned no advice.");
             return ResponseEntity.ok(Map.of("answer", answer));
         } catch (ExternalApiException exception) {
@@ -130,7 +130,7 @@ public class ExternalIntegrationController {
                 "store", true
             );
             JsonNode response = requestJson(openAiBaseUrl + "/responses", objectMapper.writeValueAsString(payload), openAiKey);
-            String answer = response.path("output_text").asText("");
+            String answer = responseText(response);
             if (answer.isBlank()) throw new ExternalApiException(HttpStatus.BAD_GATEWAY.value(), "AI returned no answer.");
             return ResponseEntity.ok(Map.of("answer", answer));
         } catch (ExternalApiException exception) {
@@ -159,7 +159,7 @@ public class ExternalIntegrationController {
                 "store", true
             );
             JsonNode response = requestJson(openAiBaseUrl + "/responses", objectMapper.writeValueAsString(payload), openAiKey);
-            String answer = response.path("output_text").asText("");
+            String answer = responseText(response);
             if (answer.isBlank()) throw new ExternalApiException(HttpStatus.BAD_GATEWAY.value(), "AI returned no analysis.");
             return ResponseEntity.ok(Map.of("answer", answer));
         } catch (ExternalApiException exception) {
@@ -201,6 +201,23 @@ public class ExternalIntegrationController {
             // Keep the response generic when the provider does not return JSON.
         }
         return "External service rejected the request.";
+    }
+
+    private String responseText(JsonNode response) {
+        String outputText = response.path("output_text").asText("");
+        if (!outputText.isBlank()) return outputText;
+
+        StringBuilder text = new StringBuilder();
+        for (JsonNode outputItem : response.path("output")) {
+            for (JsonNode contentItem : outputItem.path("content")) {
+                String value = contentItem.path("text").asText("");
+                if (!value.isBlank()) {
+                    if (text.length() > 0) text.append('\n');
+                    text.append(value);
+                }
+            }
+        }
+        return text.toString().trim();
     }
 
     private ResponseEntity<Map<String, String>> configurationError(String message) {
