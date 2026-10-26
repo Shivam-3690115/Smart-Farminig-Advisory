@@ -33,6 +33,8 @@ public class ExternalIntegrationController {
     private final String openAiKey;
     private final String openAiBaseUrl;
     private final String openAiModel;
+    private final String apmcKey;
+    private final String apmcBaseUrl;
 
     public ExternalIntegrationController(
         ObjectMapper objectMapper,
@@ -40,7 +42,9 @@ public class ExternalIntegrationController {
         @Value("${integrations.weather.base-url}") String weatherBaseUrl,
         @Value("${integrations.openai.api-key}") String openAiKey,
         @Value("${integrations.openai.base-url}") String openAiBaseUrl,
-        @Value("${integrations.openai.model}") String openAiModel
+        @Value("${integrations.openai.model}") String openAiModel,
+        @Value("${integrations.apmc.api-key}") String apmcKey,
+        @Value("${integrations.apmc.base-url}") String apmcBaseUrl
     ) {
         this.objectMapper = objectMapper;
         this.weatherKey = weatherKey;
@@ -48,6 +52,48 @@ public class ExternalIntegrationController {
         this.openAiKey = openAiKey;
         this.openAiBaseUrl = openAiBaseUrl;
         this.openAiModel = openAiModel;
+        this.apmcKey = apmcKey;
+        this.apmcBaseUrl = apmcBaseUrl;
+    }
+
+    @GetMapping("/apmc/latest")
+    public ResponseEntity<?> apmcLatest(
+        @RequestParam(required = false) String state,
+        @RequestParam(required = false) String district,
+        @RequestParam(required = false) String commodity,
+        @RequestParam(defaultValue = "10") int limit
+    ) {
+        if (apmcKey.isBlank()) return configurationError("APMC_API_KEY is not configured.");
+        int safeLimit = Math.max(1, Math.min(limit, 50));
+        try {
+            StringBuilder url = new StringBuilder(apmcBaseUrl).append("/prices/latest?limit=").append(safeLimit);
+            appendQuery(url, "state", state);
+            appendQuery(url, "district", district);
+            appendQuery(url, "commodity", commodity);
+            HttpRequest request = HttpRequest.newBuilder(URI.create(url.toString()))
+                .header("Accept", "application/json")
+                .header("x-api-key", apmcKey)
+                .GET()
+                .build();
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() < 200 || response.statusCode() >= 300) {
+                throw new ExternalApiException(response.statusCode(), providerErrorMessage(response.body()));
+            }
+            return ResponseEntity.ok(objectMapper.readTree(response.body()));
+        } catch (ExternalApiException exception) {
+            return ResponseEntity.status(exception.status).body(Map.of("error", exception.getMessage()));
+        } catch (IOException exception) {
+            return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(Map.of("error", "APMC service could not be reached."));
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(Map.of("error", "APMC request was interrupted."));
+        }
+    }
+
+    private void appendQuery(StringBuilder url, String name, String value) {
+        if (value != null && !value.isBlank()) {
+            url.append('&').append(name).append('=').append(encode(value.trim()));
+        }
     }
 
     @GetMapping("/weather")

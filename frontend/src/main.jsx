@@ -415,7 +415,36 @@ function WeatherDesk() {
 }
 
 function MandiTracker() {
-  return <EmptyData message="Live mandi data is not configured. No indicative or demo prices are shown." />
+  const [state, setState] = useState('Maharashtra')
+  const [commodity, setCommodity] = useState('')
+  const [records, setRecords] = useState([])
+  const [meta, setMeta] = useState(null)
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  const search = async () => {
+    setLoading(true)
+    setError('')
+    try {
+      const params = new URLSearchParams({ state, limit: '12' })
+      if (commodity.trim()) params.set('commodity', commodity.trim())
+      const response = await fetch(`${apiBase}/integrations/apmc/latest?${params}`)
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error || 'Unable to load live mandi rates.')
+      setRecords(Array.isArray(data.data) ? data.data : [])
+      setMeta(data.meta || null)
+    } catch (requestError) {
+      setRecords([])
+      setMeta(null)
+      setError(requestError.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => { search() }, [])
+
+  return <div className="module-layout"><ModuleCard title="Live APMC mandi rates"><div className="weather-search"><Search size={15} /><input value={state} onChange={event => setState(event.target.value)} placeholder="State" /><input value={commodity} onChange={event => setCommodity(event.target.value)} placeholder="Commodity (optional)" /><button className="secondary-btn" onClick={search}>{loading ? 'Loading...' : 'Search'}</button></div>{error && <p className="helper-text error-text">{error}</p>}{records.length > 0 ? <><div className="market-table">{records.map(record => <div className="market-row" key={record.id}><div><strong>{record.commodity?.name || 'Unknown commodity'}</strong><span>{record.market?.name || 'Unknown market'}</span></div><strong>₹{record.prices?.modal ?? '—'}<small> / quintal</small></strong><span>Min ₹{record.prices?.min ?? '—'} · Max ₹{record.prices?.max ?? '—'}</span></div>)}</div>{meta && <p className="helper-text">Live provider records: {meta.total ?? meta.count ?? records.length}. Source: {meta.source || 'MandiBhavAajKa'}</p>}</> : (!loading && <EmptyData message="No live mandi records matched this search." />)}</ModuleCard></div>
 }
 
 function EconomicsPlanner() {

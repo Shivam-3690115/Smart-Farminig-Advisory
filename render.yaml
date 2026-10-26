@@ -18,6 +18,10 @@ services:
         sync: false
       - key: OPENAI_MODEL
         value: gpt-4o-mini
+      - key: APMC_API_KEY
+        sync: false
+      - key: APMC_BASE_URL
+        value: https://mandibhavaajka.com/api/v1
 
   - type: web
     name: smart-farming-web
