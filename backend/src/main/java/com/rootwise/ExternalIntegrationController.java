@@ -127,7 +127,7 @@ public class ExternalIntegrationController {
                 "model", openAiModel,
                 "instructions", "You are Kisan Mitra, a cautious farming support assistant. Give concise, practical answers. Tell the farmer to consult a local agriculture officer before pesticide use.",
                 "input", request.question(),
-                "store", false
+                "store", true
             );
             JsonNode response = requestJson(openAiBaseUrl + "/responses", objectMapper.writeValueAsString(payload), openAiKey);
             String answer = response.path("output_text").asText("");
@@ -156,7 +156,7 @@ public class ExternalIntegrationController {
                 "model", openAiModel,
                 "instructions", "You are Kisan Mitra. Never present demo or fabricated data as fact.",
                 "input", prompt,
-                "store", false
+                "store", true
             );
             JsonNode response = requestJson(openAiBaseUrl + "/responses", objectMapper.writeValueAsString(payload), openAiKey);
             String answer = response.path("output_text").asText("");
