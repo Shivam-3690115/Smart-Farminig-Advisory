@@ -161,6 +161,7 @@ function App() {
             ['Crop lab', 'Crop lab', Calculator], ['Fertilizer', 'Fertilizer', Sprout],
             ['Weather desk', 'Weather desk', Sun], ['Mandi rates', 'Mandi rates', Store],
             ['Farm economics', 'Farm economics', IndianRupee], ['Kisan Mitra', 'Kisan Mitra', MessageCircle],
+            ['CEP report', 'CEP report', FileText],
           ].map(([key, label, Icon]) => <button key={key} className={active === key ? 'nav-item active' : 'nav-item'} onClick={() => { setActive(key); setMobileOpen(false); setShowNotifications(false) }}><Icon size={18} /><span>{label}</span>{key === 'Advisories' && <i className="nav-dot" />}</button>)}
         </nav>
         <div className="sidebar-bottom">
@@ -303,12 +304,13 @@ function SectionPage({ active, tasks, toggleTask, advisories, notifications, cro
     'Mandi rates': ['MARKET INTELLIGENCE', 'APMC mandi tracker', 'Compare indicative modal prices and arrival movement.'],
     'Farm economics': ['FARM ECONOMICS', 'Cost-benefit planner', 'Understand production cost, profit, B:C ratio, and breakeven price.'],
     'Kisan Mitra': ['FARMER SUPPORT', 'Kisan Mitra', 'Get quick answers and emergency support numbers.'],
+    'CEP report': ['ACADEMIC SUBMISSION', 'Community engagement project report', 'Prepare the report using the University of Mumbai CEP structure.'],
   }
-  if (['Crop lab', 'Fertilizer', 'Weather desk', 'Mandi rates', 'Farm economics', 'Kisan Mitra'].includes(active)) {
+  if (['Crop lab', 'Fertilizer', 'Weather desk', 'Mandi rates', 'Farm economics', 'Kisan Mitra', 'CEP report'].includes(active)) {
     const [eyebrow, title, subtitle] = headings[active]
     const modules = { 'Crop lab': <CropLab />, Fertilizer: <FertilizerCalculator />,
       'Weather desk': <WeatherDesk />, 'Mandi rates': <MandiTracker />, 'Farm economics': <EconomicsPlanner />,
-      'Kisan Mitra': <KisanMitra /> }
+      'Kisan Mitra': <KisanMitra />, 'CEP report': <CepReport /> }
     return <section className="section-page"><div className="section-page-head"><div><p className="eyebrow">{eyebrow}</p><h1>{title}</h1><p>{subtitle}</p></div></div>{modules[active]}</section>
   }
   const [eyebrow, title, subtitle] = headings[active]
@@ -421,6 +423,12 @@ function MandiTracker() {
   const [meta, setMeta] = useState(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [showDemo, setShowDemo] = useState(true)
+  const demoRecords = [
+    { id: 'demo-pune-onion', commodity: { name: 'Onion' }, market: { name: 'Lasalgaon' }, prices: { min: 1800, modal: 2200, max: 2600 } },
+    { id: 'demo-nashik-grape', commodity: { name: 'Grapes' }, market: { name: 'Nashik' }, prices: { min: 4200, modal: 5000, max: 5800 } },
+    { id: 'demo-akola-soybean', commodity: { name: 'Soybean' }, market: { name: 'Akola' }, prices: { min: 4300, modal: 4700, max: 5100 } },
+  ]
 
   const search = async () => {
     setLoading(true)
@@ -444,7 +452,8 @@ function MandiTracker() {
 
   useEffect(() => { search() }, [])
 
-  return <div className="module-layout"><ModuleCard title="Live APMC mandi rates"><div className="weather-search"><Search size={15} /><input value={state} onChange={event => setState(event.target.value)} placeholder="State" /><input value={commodity} onChange={event => setCommodity(event.target.value)} placeholder="Commodity (optional)" /><button className="secondary-btn" onClick={search}>{loading ? 'Loading...' : 'Search'}</button></div>{error && <p className="helper-text error-text">{error}</p>}{records.length > 0 ? <><div className="market-table">{records.map(record => <div className="market-row" key={record.id}><div><strong>{record.commodity?.name || 'Unknown commodity'}</strong><span>{record.market?.name || 'Unknown market'}</span></div><strong>₹{record.prices?.modal ?? '—'}<small> / quintal</small></strong><span>Min ₹{record.prices?.min ?? '—'} · Max ₹{record.prices?.max ?? '—'}</span></div>)}</div>{meta && <p className="helper-text">Live provider records: {meta.total ?? meta.count ?? records.length}. Source: {meta.source || 'MandiBhavAajKa'}</p>}</> : (!loading && <EmptyData message="No live mandi records matched this search." />)}</ModuleCard></div>
+  const visibleRecords = [...records, ...(showDemo ? demoRecords : [])]
+  return <div className="module-layout"><ModuleCard title="APMC mandi rates"><div className="weather-search"><Search size={15} /><input value={state} onChange={event => setState(event.target.value)} placeholder="State" /><input value={commodity} onChange={event => setCommodity(event.target.value)} placeholder="Commodity (optional)" /><button className="secondary-btn" onClick={search}>{loading ? 'Loading...' : 'Search'}</button></div><button className="secondary-btn demo-toggle" onClick={() => setShowDemo(!showDemo)}>{showDemo ? 'Hide academic demo data' : 'Show academic demo data'}</button>{error && <p className="helper-text error-text">{error}</p>}{visibleRecords.length > 0 ? <><div className="market-table">{visibleRecords.map(record => <div className="market-row" key={record.id}><div><strong>{record.commodity?.name || 'Unknown commodity'}</strong><span>{record.market?.name || 'Unknown market'}</span></div><strong>₹{record.prices?.modal ?? '—'}<small> / quintal</small></strong><span>Min ₹{record.prices?.min ?? '—'} · Max ₹{record.prices?.max ?? '—'}<br />{record.id?.startsWith('demo-') ? 'Academic demo record' : 'Live provider record'}</span></div>)}</div>{meta && <p className="helper-text">Live provider records: {meta.total ?? meta.count ?? records.length}. Source: {meta.source || 'MandiBhavAajKa'}</p>} {showDemo && <p className="helper-text">Sample values are for classroom demonstration only and must not be used for selling decisions.</p>}</> : (!loading && <EmptyData message="No live or sample mandi records matched this search." />)}</ModuleCard></div>
 }
 
 function EconomicsPlanner() {
@@ -481,7 +490,7 @@ function KisanMitra() {
 }
 
 function CepReport() {
-  return <ModuleCard title="Smart Farming Advisory System · SEM 5 CEP"><div className="report-copy"><h2>Community engagement and methodology</h2><p>This project supports farmers with accessible, data-informed decisions for crop selection, nutrient planning, crop health, weather operations, market timing, and farm economics.</p><h3>UN Sustainable Development Goals</h3><ul><li>SDG 1: No Poverty through better farm profitability.</li><li>SDG 2: Zero Hunger through resilient production.</li><li>SDG 12: Responsible Consumption through precise input use.</li></ul><h3>Implemented modules</h3><p>Crop recommendation, fertilizer estimation, disease guide, weather advisory, mandi tracker, cost-benefit planner, Kisan Mitra support, multilingual-ready onboarding, and farmer-friendly notifications.</p></div><button className="primary-btn print-btn" onClick={() => window.print()}><FileText size={17} /> Print / save PDF summary</button></ModuleCard>
+  return <ModuleCard title="Smart Farming Advisory System · SEM 5 CEP"><div className="report-copy"><h2>Title page</h2><p><strong>Title:</strong> Smart Farming Advisory System for Farmers</p><p><strong>Programme:</strong> Bachelor of Science (Information Technology) · Semester 5</p><p><strong>Academic year:</strong> 2026–27 · <strong>Mentor:</strong> Prof. Archana Patil</p><h2>Certificate and declaration</h2><p>This report is submitted as a Community Engagement Project. The student confirms that the work is original and that field observations, interviews, secondary sources, and clearly labelled demonstration records are reported honestly.</p><h2>Acknowledgement</h2><p>I express my gratitude to the institute, faculty mentor, farmers, and community participants who contributed observations and feedback for this project.</p><h2>Abstract</h2><p>This project develops a farmer-oriented digital advisory system that combines crop planning, nutrient guidance, weather awareness, live APMC information, economics, and Kisan Mitra support. The system responds to community needs identified through farmer interaction and secondary research. Live market records are obtained from the configured APMC provider; academic sample records are separately labelled for demonstration.</p><h2>Chapter 1: Introduction</h2><p>The purpose is to connect information-technology learning with a practical agricultural problem. The project focuses on accessible decision support for crop choice, fertilizer planning, field operations, market awareness, and farmer support. Its scope is advisory and educational; pesticide use, prices, and agronomic decisions must be verified with local professionals.</p><h2>Chapter 2: Literature review</h2><p>The study refers to University of Mumbai CEP guidelines under NEP 2020, official agricultural data sources, weather services, and APMC market information. These sources highlight the importance of community interaction, responsible data use, local context, and connecting classroom theory with real-life socio-economic issues.</p><h2>Chapter 3: Methodology</h2><p>Methods include community-oriented observation, requirement discussions, secondary survey, software prototyping, API integration, database-backed farmer profiles, and functional testing. The approach separates verified live data from academic demonstration values and avoids presenting fabricated records as current market facts.</p><h2>Chapter 4: Community interactions, observations and analysis</h2><p>Farmers commonly need simple regional information, clear language, timely weather advice, input guidance, and market comparisons. The prototype addresses these needs through onboarding, multilingual-ready navigation, weather search, live APMC search, AI-assisted support, and printable academic documentation. The sample mandi cards demonstrate interface behavior only; live records remain the source for operational use.</p><h2>Chapter 5: Conclusion and recommendations</h2><p>The project demonstrates how a full-stack system can make agricultural information easier to access while retaining human and institutional verification. Recommended future work includes more farmer interviews, verified advisor directories, persistent crop records, regional language coverage, offline support, and validated government data partnerships.</p><h2>References</h2><ul><li>University of Mumbai, Guidelines for Community Engagement Projects for Undergraduate Students, NEP 2020, Academic Year 2025–26.</li><li>Community Engagement Project Format, School of Applied Sciences, B.Sc. Information Technology, Academic Year 2026–27.</li><li>MandiBhavAajKa API documentation and AGMARKNET provenance metadata.</li><li>OpenWeather and OpenAI provider documentation.</li></ul><h2>Appendices</h2><p>Appendix A: farmer interaction notes. Appendix B: guide interaction diary. Appendix C: feedback form. Appendix D: screenshots and live/demo data distinction.</p></div><button className="primary-btn print-btn" onClick={() => window.print()}><FileText size={17} /> Print / save PDF summary</button></ModuleCard>
 }
 
 function CropCard({ name, variety, stage, days, color }) {
