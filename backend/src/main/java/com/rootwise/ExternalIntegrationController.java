@@ -98,14 +98,14 @@ public class ExternalIntegrationController {
                 + "chemical caution, and when to contact an agronomist. Never invent a guaranteed diagnosis or dosage. "
                 + "Symptoms: " + symptoms;
             List<Map<String, Object>> content = new ArrayList<>();
-            content.add(Map.of("type", "text", "text", prompt));
+            content.add(Map.of("type", "input_text", "text", prompt));
             if (request.imageDataUrl() != null && !request.imageDataUrl().isBlank()) {
-                content.add(Map.of("type", "image_url", "image_url", Map.of("url", request.imageDataUrl())));
+                content.add(Map.of("type", "input_image", "image_url", request.imageDataUrl()));
             }
-            Map<String, Object> message = Map.of("role", "user", "content", content);
-            Map<String, Object> payload = Map.of("model", openAiModel, "temperature", 0.3, "messages", List.of(message));
-            JsonNode response = requestJson(openAiBaseUrl + "/chat/completions", objectMapper.writeValueAsString(payload), openAiKey);
-            String answer = response.path("choices").path(0).path("message").path("content").asText("");
+            Map<String, Object> payload = Map.of("model", openAiModel, "input",
+                List.of(Map.of("role", "user", "content", content)), "store", false);
+            JsonNode response = requestJson(openAiBaseUrl + "/responses", objectMapper.writeValueAsString(payload), openAiKey);
+            String answer = response.path("output_text").asText("");
             if (answer.isBlank()) throw new ExternalApiException(HttpStatus.BAD_GATEWAY.value(), "AI returned no advice.");
             return ResponseEntity.ok(Map.of("answer", answer));
         } catch (ExternalApiException exception) {
@@ -125,14 +125,13 @@ public class ExternalIntegrationController {
         try {
             Map<String, Object> payload = Map.of(
                 "model", openAiModel,
-                "temperature", 0.4,
-                "messages", List.of(
-                    Map.of("role", "system", "content", "You are Kisan Mitra, a cautious farming support assistant. Give concise, practical answers. Tell the farmer to consult a local agriculture officer before pesticide use."),
-                    Map.of("role", "user", "content", request.question())
-                )
+                "instructions", "You are Kisan Mitra, a cautious farming support assistant. Give concise, practical answers. Tell the farmer to consult a local agriculture officer before pesticide use.",
+                "input", request.question(),
+                "store", false
             );
-            JsonNode response = requestJson(openAiBaseUrl + "/chat/completions", objectMapper.writeValueAsString(payload), openAiKey);
-            String answer = response.path("choices").path(0).path("message").path("content").asText("");
+            JsonNode response = requestJson(openAiBaseUrl + "/responses", objectMapper.writeValueAsString(payload), openAiKey);
+            String answer = response.path("output_text").asText("");
+            if (answer.isBlank()) throw new ExternalApiException(HttpStatus.BAD_GATEWAY.value(), "AI returned no answer.");
             return ResponseEntity.ok(Map.of("answer", answer));
         } catch (ExternalApiException exception) {
             return ResponseEntity.status(exception.status).body(Map.of("error", exception.getMessage()));
@@ -154,14 +153,13 @@ public class ExternalIntegrationController {
                 + "clear headings, assumptions, and a warning to verify regulated inputs locally. Task: "
                 + request.query() + "\nFarmer data: " + context;
             Map<String, Object> payload = Map.of(
-                "model", openAiModel, "temperature", 0.2,
-                "messages", List.of(
-                    Map.of("role", "system", "content", "You are Kisan Mitra. Never present demo or fabricated data as fact."),
-                    Map.of("role", "user", "content", prompt)
-                )
+                "model", openAiModel,
+                "instructions", "You are Kisan Mitra. Never present demo or fabricated data as fact.",
+                "input", prompt,
+                "store", false
             );
-            JsonNode response = requestJson(openAiBaseUrl + "/chat/completions", objectMapper.writeValueAsString(payload), openAiKey);
-            String answer = response.path("choices").path(0).path("message").path("content").asText("");
+            JsonNode response = requestJson(openAiBaseUrl + "/responses", objectMapper.writeValueAsString(payload), openAiKey);
+            String answer = response.path("output_text").asText("");
             if (answer.isBlank()) throw new ExternalApiException(HttpStatus.BAD_GATEWAY.value(), "AI returned no analysis.");
             return ResponseEntity.ok(Map.of("answer", answer));
         } catch (ExternalApiException exception) {
@@ -180,7 +178,7 @@ public class ExternalIntegrationController {
                 .POST(HttpRequest.BodyPublishers.ofString(body));
             HttpResponse<String> response = httpClient.send(builder.build(), HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
-                throw new ExternalApiException(response.statusCode(), "External service rejected the request.");
+                throw new ExternalApiException(response.statusCode(), providerErrorMessage(response.body()));
             }
             return objectMapper.readTree(response.body());
         } catch (IOException exception) {
@@ -189,6 +187,20 @@ public class ExternalIntegrationController {
             Thread.currentThread().interrupt();
             throw new ExternalApiException(HttpStatus.BAD_GATEWAY.value(), "External service request was interrupted.");
         }
+
+    }
+
+    private String providerErrorMessage(String responseBody) {
+        try {
+            JsonNode error = objectMapper.readTree(responseBody).path("error");
+            String message = error.path("message").asText("");
+            if (!message.isBlank()) {
+                return "AI provider error: " + message;
+            }
+        } catch (IOException ignored) {
+            // Keep the response generic when the provider does not return JSON.
+        }
+        return "External service rejected the request.";
     }
 
     private ResponseEntity<Map<String, String>> configurationError(String message) {
