@@ -208,16 +208,21 @@ public class ExternalIntegrationController {
         if (!outputText.isBlank()) return outputText;
 
         StringBuilder text = new StringBuilder();
-        for (JsonNode outputItem : response.path("output")) {
-            for (JsonNode contentItem : outputItem.path("content")) {
-                String value = contentItem.path("text").asText("");
-                if (!value.isBlank()) {
-                    if (text.length() > 0) text.append('\n');
-                    text.append(value);
-                }
-            }
-        }
+        collectResponseText(response.path("output"), text);
         return text.toString().trim();
+    }
+
+    private void collectResponseText(JsonNode node, StringBuilder text) {
+        if (node.isObject()) {
+            JsonNode value = node.get("text");
+            if (value != null && value.isTextual() && !value.asText().isBlank()) {
+                if (text.length() > 0) text.append('\n');
+                text.append(value.asText());
+            }
+            node.elements().forEachRemaining(child -> collectResponseText(child, text));
+        } else if (node.isArray()) {
+            node.elements().forEachRemaining(child -> collectResponseText(child, text));
+        }
     }
 
     private ResponseEntity<Map<String, String>> configurationError(String message) {
